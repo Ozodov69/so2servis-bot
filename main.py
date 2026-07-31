@@ -18,10 +18,6 @@ logger = logging.getLogger("So2ServisBot")
 TOKEN = "8819506227:AAGWqjDtsqjEbQlvlnXb29XbEQgZH2-bHus"
 ADMIN_ID = 8980446304
 
-if not TOKEN:
-    logger.error("BOT_TOKEN topilmadi! Render muhitini tekshiring.")
-    sys.exit(1)
-
 bot = telebot.TeleBot(TOKEN, parse_mode="Markdown")
 
 # --- XOTIRADAGI KENGAYtIRILGAN BAZALAR ---
