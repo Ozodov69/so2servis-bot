@@ -15,7 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger("So2ServisBot")
 
 # Muhit o'zgaruvchilaridan token va admin ID'ni olish
-TOKEN = os.getenv('8819506227:AAGWajDtsaJEbQvlnXn529XbEQgZH2-bHus')
+TOKEN = os.getenv('8819506227:AAEBvdyJMIZ93-kq0ewaTrkP0DbRMNrZ1pE')
 ADMIN_ID = int(os.getenv('8980446304', '123456789'))
 
 if not TOKEN:
