@@ -194,15 +194,7 @@ def cancel_order(call):
     bot.edit_message_caption("❌ **Otkaz qilindi (Bekor qilingan)**", call.message.chat.id, call.message.message_id)
     try: bot.send_message(user_id, "❌ Zakazingiz admin tomonidan rad etildi. Sababini bilish uchun adminga yozing.")
     except: pass
-        # --- HISOB TO'LDIRISH VA CHEK YUBORISH ---
-@bot.callback_query_handler(func=lambda call: call.data == "start_topup")
-def topup_start(call):
-    markup = types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("🔙 Bekor qilish", callback_data="return_main"))
-    msg = bot.send_message(call.message.chat.id, "✍️ Qancha summa to'ldirmoqchisiz? (Faqat raqam yozing):", reply_markup=markup)
-    user_states[call.from_user.id] = "wait_topup"
-    bot.register_next_step_handler(msg, process_topup_amount)
-
-def process_topup_amount(message):
+        def process_topup_amount(message):
     user_id = message.from_user.id
     if user_states.get(user_id) != "wait_topup": return
     if not message.text.isdigit():
@@ -217,67 +209,16 @@ def process_topup_amount(message):
     markup = types.InlineKeyboardMarkup().add(
         types.InlineKeyboardButton("📤 Chek rasmini yuborish", callback_data=f"receipt_{inv_id}"),
         types.InlineKeyboardButton("🔙 Bekor qilish", callback_data="return_main")
-
-bot.send_message(
+    )
+    
+    bot.send_message(
         message.chat.id, 
         f"💳 **Rekvizit:** 5614 6821 1244 8428\n💵 **Summa:** {amount:,.2f} so'm\n\nTo'lov qilib pastdagi tugmani bosing:", 
         reply_markup=markup, 
         parse_mode="Markdown"
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("receipt_"))
-def wait_receipt(call):
-    inv_id = call.data.split("_")[1]
-    msg = bot.send_message(call.message.chat.id, "📸 To'lov qilganingizni tasdiqlovchi chek skrinshotini yuboring:")
-    user_states[call.from_user.id] = f"wait_receipt_{inv_id}"
-    bot.register_next_step_handler(msg, process_receipt)
-
-def process_receipt(message):
-    user_id = message.from_user.id
-    state = user_states.get(user_id, "")
-    if not state.startswith("wait_receipt_"): return
-    
-    if not message.photo:
-        msg = bot.send_message(message.chat.id, "❌ Rasm yuboring:")
-        bot.register_next_step_handler(msg, process_receipt)
-        return
-        
-    inv_id = int(state.split("_")[2])
-    order = pending_orders.get(inv_id)
-    if not order: return
-    
-    username = f"@{message.from_user.username}" if message.from_user.username else "Yo'q"
-    
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton("✅ Tasdiqlash", callback_data=f"accept_pay_{inv_id}"),
-        types.InlineKeyboardButton("❌ Otkaz qilish", callback_data=f"reject_pay_{inv_id}")
     )
-    bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=f"📥 **To'lov cheki!**\n👤 User: {username}\n🆔 ID: `{user_id}`\n💵 Summa: **{order['amount']:,.2f} so'm**", reply_markup=markup, parse_mode="Markdown")
-    bot.send_message(message.chat.id, "✅ Chek adminga yuborildi! Kuting.")
     user_states.pop(user_id, None)
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("accept_pay_"))
-def accept_pay(call):
-    if call.from_user.id != ADMIN_ID: return
-    inv_id = int(call.data.split("_")[2])
-    order = pending_orders.get(inv_id)
-    if order:
-        user_balances.setdefault(order['id'], 0.0)
-        user_balances[order['id']] += order['amount']
-        bot.edit_message_caption("✅ **Tasdiqlandi va balansga qo'shildi!**", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
-        try: bot.send_message(order['id'], f"✅ Balansingizga {order['amount']:,.2f} so'm qo'shildi!")
-        except: pass
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("reject_pay_"))
-def reject_pay(call):
-    if call.from_user.id != ADMIN_ID: return
-    inv_id = int(call.data.split("_")[2])
-    order = pending_orders.get(inv_id)
-    if order:
-        bot.edit_message_caption("❌ **Otkaz qilindi (Rad etildi)**", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
-        try: bot.send_message(order['id'], "❌ To'lovingiz tasdiqlanmadi (Otkaz qilindi). Iltimos, admin bilan bog'laning.")
-        except: pass
-            # --- TO'LIQ KENGAYTIRILGAN ADMIN PANEL ---
+# --- TO'LIQ KENGAYTIRILGAN ADMIN PANEL ---
 @bot.callback_query_handler(func=lambda call: call.data == "open_admin_panel")
 def admin_panel(call):
     if call.from_user.id != ADMIN_ID: return
@@ -363,93 +304,38 @@ def process_broadcast(message):
 if __name__ == '__main__':
     print("🚀 Bot ishga tushdi!")
     bot.infinity_polling(skip_pending=True)
-    # --- TO'LIQ KENGAYTIRILGAN ADMIN PANEL ---
-@bot.callback_query_handler(func=lambda call: call.data == "open_admin_panel")
-def admin_panel(call):
-    if call.from_user.id != ADMIN_ID: return
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton("👥 Jadval (Mijozlar)", callback_data="admin_list"),
-        types.InlineKeyboardButton("💰 Balans (+/-)", callback_data="admin_mod_bal")
-    )
-    markup.add(
-        types.InlineKeyboardButton("📊 Statistika", callback_data="admin_stats"),
-        types.InlineKeyboardButton("📢 Xabar tarqatish", callback_data="admin_broadcast")
-    )
-    markup.add(types.InlineKeyboardButton("🔙 Menyuga qaytish", callback_data="return_main"))
-    
-    bot.edit_message_text("🛠 **Boshqaruv Paneli (Admin):**\n\nKerakli bo'limni tanlang:", call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
+import json
 
-@bot.callback_query_handler(func=lambda call: call.data == "admin_stats")
-def admin_stats(call):
-    if call.from_user.id != ADMIN_ID: return
-    markup = types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("🔙 Admin Panel", callback_data="open_admin_panel"))
-    text = f"📊 **Bot Statistikasi:**\n\n👥 Botdan foydalanuvchilar soni: **{len(all_users)} ta**"
-    bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
+DATA_FILE = "bot_data.json"
 
-@bot.callback_query_handler(func=lambda call: call.data == "admin_list")
-def admin_list(call):
-    if call.from_user.id != ADMIN_ID: return
-    text = "📊 **Foydalanuvchilar Jadvali:**\n\n"
-    if not user_balances:
-        text += "Hozircha hech kimning balansi yo'q."
-    else:
-        for uid, bal in user_balances.items():
-            text += f"🆔 `{uid}` — **{bal:,.2f} so'm**\n"
-            
-    markup = types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("🔙 Admin Panel", callback_data="open_admin_panel"))
-    bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
-
-@bot.callback_query_handler(func=lambda call: call.data == "admin_mod_bal")
-def admin_mod_bal(call):
-    if call.from_user.id != ADMIN_ID: return
-    markup = types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("🔙 Bekor qilish", callback_data="open_admin_panel"))
-    msg = bot.send_message(call.message.chat.id, "✍️ Format: `ID SUMMA`\n*(Masalan: `123456789 50000` yoki ayirish uchun `123456789 -10000`)*", parse_mode="Markdown", reply_markup=markup)
-    user_states[call.from_user.id] = "wait_mod"
-    bot.register_next_step_handler(msg, process_mod_bal)
-
-def process_mod_bal(message):
-    if message.from_user.id != ADMIN_ID: return
-    if user_states.get(message.from_user.id) != "wait_mod": return
-    try:
-        uid, amt = message.text.split()
-        uid, amt = int(uid), float(amt)
-        user_balances.setdefault(uid, 0.0)
-        user_balances[uid] += amt
-        bot.send_message(message.chat.id, f"✅ Bajarildi! ID `{uid}` egasining yangi balansi: **{user_balances[uid]:,.2f} so'm**", parse_mode="Markdown")
-    except:
-        bot.send_message(message.chat.id, "❌ Xato format! Balans o'zgartirilmadi.")
-    user_states.pop(message.from_user.id, None)
-
-@bot.callback_query_handler(func=lambda call: call.data == "admin_broadcast")
-def admin_broadcast(call):
-    if call.from_user.id != ADMIN_ID: return
-    markup = types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("🔙 Bekor qilish", callback_data="open_admin_panel"))
-    msg = bot.send_message(call.message.chat.id, "📢 Hamma mijozlarga tarqatish uchun xabar matnini yuboring:", reply_markup=markup)
-    user_states[call.from_user.id] = "wait_broadcast"
-    bot.register_next_step_handler(msg, process_broadcast)
-
-def process_broadcast(message):
-    if message.from_user.id != ADMIN_ID: return
-    if user_states.get(message.from_user.id) != "wait_broadcast": return
-    
-    text = message.text
-    success = 0
-    for uid in all_users:
+# Ma'lumotlarni fayldan o'qib olish
+def load_data():
+    if os.path.exists(DATA_FILE):
         try:
-            bot.send_message(uid, f"📢 **Yangi xabar:**\n\n{text}", parse_mode="Markdown")
-            success += 1
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                balances = {int(k): v for k, v in data.get("balances", {}).items()}
+                users = set(data.get("users", []))
+                return balances, users
         except:
             pass
-            
-    bot.send_message(message.chat.id, f"✅ Xabar **{success} ta** odamga yetkazildi!")
-    user_states.pop(message.from_user.id, None)
+    return {}, set()
 
-# --- ISHGA TUSHIRISH ---
-if __name__ == '__main__':
-    print("🚀 Bot ishga tushdi!")
-    bot.infinity_polling(skip_pending=True)
-    # 1. /start komandasida foydalanuvchini bazaga qo'shib saqlash
+# Ma'lumotlarni faylga saqlash
+def save_data():
+    data = {
+        "balances": {str(k): v for k, v in user_balances.items()},
+        "users": list(all_users)
+    }
+    try:
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except:
+        pass
+
+# Bot ishga tushganda bazani yuklash
+user_balances, all_users = load_data()
+# 1. /start komandasida foydalanuvchini bazaga qo'shib saqlash
 @bot.message_handler(commands=['start', 'menu'])
 def handle_start(message):
     user_id = message.from_user.id
@@ -548,4 +434,3 @@ if __name__ == '__main__':
             print(f"⚠️ Aloqada xatolik yuz berdi: {e}")
             print("🔄 5 soniyadan so'ng qayta ulanishga harakat qilinmoqda...")
             time.sleep(5)
-            
