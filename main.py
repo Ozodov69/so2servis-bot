@@ -218,7 +218,7 @@ def process_topup_amount(message):
         types.InlineKeyboardButton("📤 Chek rasmini yuborish", callback_data=f"receipt_{inv_id}"),
         types.InlineKeyboardButton("🔙 Bekor qilish", callback_data="return_main")
     )
-    bot.send_message(message.chat.id, f"💳 **Rekvizit:** 8600 0000 0000 0000\n💵 **Summa:** {amount:,.2f} so'm\n\nTo'lov qilib pastdagi tugmani bosing:", reply_markup=markup, parse_mode="Markdown")
+    bot.send_message(message.chat.id, f"💳 **Rekvizit:** 5614 6821 1244 8420\n💵 **Summa:** {amount:,.2f} so'm\n\nTo'lov qilib pastdagi tugmani bosing:", reply_markup=markup, parse_mode="Markdown")
     user_states.pop(user_id, None)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("receipt_"))
